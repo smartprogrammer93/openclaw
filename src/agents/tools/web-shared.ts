@@ -86,6 +86,24 @@ export function withTimeout(signal: AbortSignal | undefined, timeoutMs: number):
   return controller.signal;
 }
 
+import { normalizeHostnameAllowlist } from "../../infra/net/ssrf.js";
+
+/**
+ * Resolve the effective URL allowlist from `tools.web.urlAllowlist`.
+ * Returns `undefined` when no allowlist is configured (all URLs allowed).
+ */
+export function resolveUrlAllowlist(web?: {
+  urlAllowlist?: string[];
+  [key: string]: unknown;
+}): string[] | undefined {
+  const raw = web?.urlAllowlist;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return undefined;
+  }
+  const normalized = normalizeHostnameAllowlist(raw);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 export type ReadResponseTextResult = {
   text: string;
   truncated: boolean;

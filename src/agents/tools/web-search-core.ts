@@ -3,6 +3,7 @@ import { formatCliCommand } from "../../cli/command-format.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import { normalizeResolvedSecretInputString } from "../../config/types.secrets.js";
 import { logVerbose } from "../../globals.js";
+import { matchesHostnameAllowlist } from "../../infra/net/ssrf.js";
 import type { RuntimeWebSearchMetadata } from "../../secrets/runtime-web-tools.types.js";
 import { wrapWebContent } from "../../security/external-content.js";
 import { normalizeSecretInput } from "../../utils/normalize-secret-input.js";
@@ -19,6 +20,7 @@ import {
   readResponseText,
   resolveCacheTtlMs,
   resolveTimeoutSeconds,
+  resolveUrlAllowlist,
   writeCache,
 } from "./web-shared.js";
 
@@ -1906,6 +1908,42 @@ async function runWebSearch(params: {
   return payload;
 }
 
+export function filterResultsByAllowlist<T extends { url?: string }>(
+  results: T[],
+  allowlist: string[],
+): T[] {
+  if (allowlist.length === 0) {
+    return results;
+  }
+  return results.filter((entry) => {
+    const url = entry.url;
+    if (!url) {
+      return false;
+    }
+    try {
+      const parsed = new URL(url);
+      return matchesHostnameAllowlist(parsed.hostname, allowlist);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function applyUrlAllowlistToPayload(
+  payload: Record<string, unknown>,
+  allowlist: string[] | undefined,
+): Record<string, unknown> {
+  if (!allowlist) {
+    return payload;
+  }
+  const results = payload.results;
+  if (!Array.isArray(results)) {
+    return payload;
+  }
+  const filtered = filterResultsByAllowlist(results as Array<{ url?: string }>, allowlist);
+  return { ...payload, results: filtered, count: filtered.length };
+}
+
 export function createWebSearchTool(options?: {
   config?: OpenClawConfig;
   sandboxed?: boolean;
@@ -1929,6 +1967,7 @@ export function createWebSearchTool(options?: {
   const grokConfig = resolveGrokConfig(search);
   const geminiConfig = resolveGeminiConfig(search);
   const kimiConfig = resolveKimiConfig(search);
+  const urlAllowlist = resolveUrlAllowlist(options?.config?.tools?.web);
   const braveConfig = resolveBraveConfig(search);
   const braveMode = resolveBraveMode(braveConfig);
 
@@ -2207,7 +2246,8 @@ export function createWebSearchTool(options?: {
         kimiModel: resolveKimiModel(kimiConfig),
         braveMode,
       });
-      return jsonResult(result);
+      const filtered = applyUrlAllowlistToPayload(result, urlAllowlist);
+      return jsonResult(filtered);
     },
   };
 }
@@ -2239,4 +2279,5 @@ export const __testing = {
   resolveRedirectUrl: resolveCitationRedirectUrl,
   resolveBraveMode,
   mapBraveLlmContextResults,
+  filterResultsByAllowlist,
 } as const;

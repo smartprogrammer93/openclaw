@@ -352,8 +352,21 @@ export const ToolsWebFetchSchema = z
   .strict()
   .optional();
 
+const UrlAllowlistDomainPattern =
+  /^(\*\.)?[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+const UrlAllowlistSchema = z
+  .array(
+    z.string().refine((val) => UrlAllowlistDomainPattern.test(val), {
+      message:
+        'Invalid domain pattern. Use "example.com" or "*.example.com". Full URLs, empty strings, bare "*", and "*." are not allowed.',
+    }),
+  )
+  .optional();
+
 export const ToolsWebSchema = z
   .object({
+    urlAllowlist: UrlAllowlistSchema,
     search: ToolsWebSearchSchema,
     fetch: ToolsWebFetchSchema,
   })
