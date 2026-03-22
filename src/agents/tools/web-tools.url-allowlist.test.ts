@@ -154,9 +154,9 @@ describe("filterResultsByAllowlist", () => {
     expect(filterResultsByAllowlist(results, [])).toEqual(results);
   });
 
-  it("drops url-less entries even when allowlist is empty", () => {
+  it("preserves url-less entries when allowlist is empty (no-op)", () => {
     const withMissing = [...results, { title: "No URL" } as { url?: string; title: string }];
-    expect(filterResultsByAllowlist(withMissing, [])).toEqual(results);
+    expect(filterResultsByAllowlist(withMissing, [])).toEqual(withMissing);
   });
 
   it("filters to only matching domains", () => {

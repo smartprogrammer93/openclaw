@@ -322,17 +322,15 @@ export function filterResultsByAllowlist<T extends { url?: string }>(
   results: T[],
   allowlist: string[],
 ): T[] {
-  // URL-less entries are always dropped — they cannot be fetched by web_fetch regardless of the
-  // allowlist. Note: this means `allowlist = []` is NOT a pure no-op; URL-less entries are still
-  // removed. In practice applyUrlAllowlistToPayload short-circuits on `!allowlist` (undefined)
-  // before reaching this function, so callers never pass `[]` without intending to filter.
-  const withUrl = results.filter((entry) => Boolean(entry.url));
   if (allowlist.length === 0) {
-    return withUrl;
+    return results;
   }
-  return withUrl.filter((entry) => {
+  return results.filter((entry) => {
+    if (!entry.url) {
+      return false;
+    }
     try {
-      const parsed = new URL(entry.url as string);
+      const parsed = new URL(entry.url);
       return matchesHostnameAllowlist(parsed.hostname, allowlist);
     } catch {
       return false;
