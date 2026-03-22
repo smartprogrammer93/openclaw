@@ -95,8 +95,8 @@ describe("matchesHostnameAllowlist", () => {
     expect(matchesHostnameAllowlist("github.com", ["*.github.com"])).toBe(false);
   });
 
-  it("matches single-label hostname like localhost", () => {
-    expect(matchesHostnameAllowlist("localhost", ["localhost"])).toBe(true);
+  it("matches single-label hostname", () => {
+    expect(matchesHostnameAllowlist("intranet", ["intranet"])).toBe(true);
   });
 
   it("rejects when no pattern matches", () => {
