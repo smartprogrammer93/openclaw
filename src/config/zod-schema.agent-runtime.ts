@@ -363,6 +363,11 @@ const SSRF_ALWAYS_BLOCKED_BARE = new Set([
   "metadata.google.internal",
 ]);
 
+// IPv4 literal pattern — all-numeric dot-separated labels (e.g. "169.254.169.254", "10.0.0.1").
+// The SSRF guard blocks private/reserved/link-local/loopback ranges at the network level, so
+// allowlisting IP literals is misleading. Reject them at schema time with a clear message.
+const IPV4_LITERAL_PATTERN = /^\d{1,3}(\.\d{1,3}){3}$/;
+
 const UrlAllowlistSchema = z
   .array(
     z
@@ -382,6 +387,10 @@ const UrlAllowlistSchema = z
             '"localhost", "localhost.localdomain", and "metadata.google.internal" are always blocked by the SSRF guard and cannot be allowlisted.',
         },
       )
+      .refine((val) => !IPV4_LITERAL_PATTERN.test(val), {
+        message:
+          "IP address literals are not supported in urlAllowlist. Use hostnames instead. The SSRF guard blocks private/reserved IP ranges at the network level regardless of the allowlist.",
+      })
       .refine(
         (val) => {
           // Reject wildcard patterns like *.localhost / *.local / *.internal —

@@ -239,6 +239,26 @@ describe("applyUrlAllowlistToPayload (citations)", () => {
     expect(result.citations).toEqual(["https://example.com", "https://evil.com"]);
   });
 
+  it("replaces blocked inlineCitation urls with a placeholder to preserve index alignment", () => {
+    const payload = {
+      content: "See [1].",
+      inlineCitations: [
+        { url: "https://example.com/page", title: "Example" },
+        { url: "https://evil.com/page", title: "Evil" },
+        { url: "https://docs.github.com/", title: "GitHub" },
+      ],
+    };
+    const result = applyUrlAllowlistToPayload(payload as Record<string, unknown>, [
+      "example.com",
+      "*.github.com",
+    ]);
+    expect(result.inlineCitations).toEqual([
+      { url: "https://example.com/page", title: "Example" },
+      { url: "[blocked by urlAllowlist]", title: "Evil" },
+      { url: "https://docs.github.com/", title: "GitHub" },
+    ]);
+  });
+
   it("filters results array and replaces blocked citations in the same payload", () => {
     const payload = {
       results: [
