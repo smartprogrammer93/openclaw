@@ -365,7 +365,7 @@ export function applyUrlAllowlistToPayload(
   if (Array.isArray(citations)) {
     patched.citations = (citations as string[]).map((url) => {
       if (typeof url !== "string") {
-        return "[blocked by urlAllowlist]";
+        return url; // Non-string entry — preserve as-is to keep index alignment.
       }
       try {
         return matchesHostnameAllowlist(new URL(url).hostname, allowlist)
