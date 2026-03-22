@@ -390,7 +390,7 @@ const UrlAllowlistSchema = z
           if (!val.startsWith("*.")) {
             return true;
           }
-          const bare = val.slice(2);
+          const bare = val.slice(2).toLowerCase();
           return !SSRF_ALWAYS_BLOCKED_SUFFIXES.some(
             (suffix) => bare === suffix.slice(1) || bare.endsWith(suffix),
           );
