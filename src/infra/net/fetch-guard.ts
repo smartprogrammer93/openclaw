@@ -40,6 +40,8 @@ export type GuardedFetchOptions = {
    */
   dangerouslyAllowEnvProxyWithoutPinnedDns?: boolean;
   auditContext?: string;
+  /** Called before following each redirect. Throw to block the redirect (e.g. allowlist check). */
+  onRedirectUrl?: (nextUrl: string) => void;
 };
 
 export type GuardedFetchResult = {
@@ -226,6 +228,17 @@ export async function fetchWithSsrFGuard(params: GuardedFetchOptions): Promise<G
         if (visited.has(nextUrl)) {
           await release(dispatcher);
           throw new Error("Redirect loop detected");
+        }
+        // Pre-connection redirect check — callers can block the redirect before any TCP
+        // connection to the target (e.g. URL allowlist enforcement).
+        if (params.onRedirectUrl) {
+          try {
+            params.onRedirectUrl(nextUrl);
+          } catch (redirectError) {
+            void response.body?.cancel();
+            await release(dispatcher);
+            throw redirectError;
+          }
         }
         if (nextParsedUrl.origin !== parsedUrl.origin) {
           currentInit = retainSafeHeadersForCrossOriginRedirect(currentInit);

@@ -564,26 +564,21 @@ async function runWebFetch(params: WebFetchRuntimeParams): Promise<Record<string
           "Accept-Language": "en-US,en;q=0.9",
         },
       },
+      // Pre-connection redirect allowlist check — blocks the redirect before any TCP
+      // connection to the target, so no network traffic reaches non-allowlisted domains.
+      onRedirectUrl: params.urlAllowlist
+        ? (nextUrl) => {
+            if (!isUrlAllowedByAllowlist(nextUrl, params.urlAllowlist!)) {
+              throw new AllowlistBlockedError(
+                `Redirect target not allowed by urlAllowlist: ${nextUrl}`,
+              );
+            }
+          }
+        : undefined,
     });
     res = result.response;
     finalUrl = result.finalUrl;
     release = result.release;
-
-    // Check redirect target against the URL allowlist. This runs after the TCP connection
-    // because the SSRF guard already validates each redirect hop's DNS resolution at the
-    // network level — private/internal IPs are blocked before any bytes flow. The allowlist
-    // check here is a content-policy gate (which domains' content the agent may see), not a
-    // network-safety gate, so post-connection is sufficient.
-    if (
-      params.urlAllowlist &&
-      finalUrl !== params.url &&
-      !isUrlAllowedByAllowlist(finalUrl, params.urlAllowlist)
-    ) {
-      if (release) {
-        await release();
-      }
-      throw new AllowlistBlockedError(`Redirect target not allowed by urlAllowlist: ${finalUrl}`);
-    }
 
     // Cloudflare Markdown for Agents — log token budget hint when present
     const markdownTokens = res.headers.get("x-markdown-tokens");
